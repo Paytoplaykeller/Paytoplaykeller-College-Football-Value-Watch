@@ -1,0 +1,38 @@
+thresholds:
+  normal_min_adjusted_ev: 0.04
+  preferred_min_adjusted_ev: 0.05
+  large_bet_min_adjusted_ev: 0.07
+  max_model_dispersion_points: 4.5
+  max_fractional_kelly: 0.25
+
+stakes:
+  PASS: 0
+  C: 0
+  B: 15
+  B_PLUS: 20
+  A_MINUS: 30
+  A: 40
+
+large_underdog:
+  threshold_points: 10
+  max_lambda_if_explosive_mismatch: 0.35
+
+favorite_margin:
+  threshold_points: -6
+  extra_haircut_threshold_points: -8.5
+
+injury:
+  unresolved_lambda_multiplier: 0.75
+  clustered_unit_lambda_multiplier: 0.70
+  thesis_conflict_lambda_multiplier: 0.60
+
+counterbalance:
+  enabled: true
+  required_verified_paths: 3
+  factors:
+    - sustainable_offense
+    - ball_security
+    - discipline
+    - special_teams_field_position
+    - late_game_resilience
+    - opponent_defensive_weakness
