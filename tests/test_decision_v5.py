@@ -1,10 +1,11 @@
-from cfb_value_watch.decision_v5 import Candidate, decide, rank_candidates
+from cfb_value_watch.decision_v5 import Candidate, OffensiveEvidence, decide, rank_candidates
 from cfb_value_watch.gates import GateResult
 
 
 def sample(**overrides):
     data = dict(
-        selection="Example home underdog +7",
+        selection="Example market",
+        spread=0,
         offered_odds=-110,
         q_market=0.50,
         p_raw=0.62,
@@ -72,3 +73,49 @@ def test_below_threshold_passes():
 def test_rank_prioritizes_actionable_bets():
     results = rank_candidates([sample(p_raw=None, selection="Watch"), sample(selection="Bet")])
     assert results[0].selection == "Bet"
+
+
+def test_sam_houston_style_small_dog_no_longer_bypasses_gate():
+    # Synthetic pregame inputs: not a reconstruction of the actual game.
+    r = decide(sample(
+        selection="Synthetic Sam Houston +1.5",
+        spread=1.5,
+        offensive_evidence=OffensiveEvidence(
+            early_down_sustainable=False,
+            qb_ol_viable=True,
+            scoring_path_verified=False,
+            havoc_mismatch=True,
+            ball_security_acceptable=False,
+            discipline_acceptable=False,
+            opponent_adjusted_evidence=True,
+        ),
+    ))
+    assert r.status == "WATCH"
+    assert "Universal Underdog Offensive Viability Gate" in " ".join(r.reasons)
+
+
+def test_missing_underdog_evidence_blocks_bet():
+    assert decide(sample(spread=1.5)).status == "WATCH"
+    assert decide(sample(spread=1.5, minutes_to_kickoff=60)).status == "PASS"
+
+
+def test_verified_small_dog_can_qualify_without_auto_veto():
+    evidence = OffensiveEvidence(
+        early_down_sustainable=True, qb_ol_viable=True,
+        scoring_path_verified=True, havoc_mismatch=False,
+        ball_security_acceptable=True, discipline_acceptable=True,
+        opponent_adjusted_evidence=True,
+    )
+    assert decide(sample(spread=1.5, offensive_evidence=evidence)).status == "BET"
+
+
+def test_minor_underdog_uncertainty_haircuts_not_auto_pass():
+    evidence = OffensiveEvidence(
+        early_down_sustainable=None, qb_ol_viable=True,
+        scoring_path_verified=True, havoc_mismatch=False,
+        ball_security_acceptable=True, discipline_acceptable=True,
+        opponent_adjusted_evidence=True,
+    )
+    r = decide(sample(spread=1.5, offensive_evidence=evidence))
+    assert r.lambda_used is not None and r.lambda_used < 0.70
+    assert r.status in ("BET", "PASS")
