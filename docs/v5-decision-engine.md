@@ -18,3 +18,9 @@ This branch adds `decision_v5.py` and regression tests **without modifying v1 ca
 - Add explicit correlation limits, actual bankroll-based staking, and sportsbook line/price invalidation conditions before live recommendation deployment.
 
 This branch does **not** claim that a data feed, hourly runner, calibrated predictive model, or production deployment already exists.
+
+## Sam Houston postmortem safeguard (October 16, 2026)
+
+The Universal Underdog Offensive Viability Gate is now required for **every positive spread**, including +1.5, not just +10 or home underdogs with clustered defensive injuries. It checks opponent-adjusted scoring path, QB/OL viability, early-down sustainability, havoc mismatch, ball security and discipline. Critical failures prevent BET; noncritical uncertainty reduces lambda.
+
+The Sam Houston example in tests is **synthetic pregame input**, not a claim that these facts were verified before kickoff. Do not backfit actual game statistics into forecasts. Backtest with timestamped pregame evidence before assigning model accuracy or deploying. Existing confirmed wagers and the base model are unchanged.
