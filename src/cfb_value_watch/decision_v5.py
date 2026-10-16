@@ -9,10 +9,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Sequence
 
-from .gates import GateResult, combine_lambda
+from .gates import GateResult, combine_lambda, universal_underdog_offense
 from .model import adjusted_probability, expected_value_per_unit, quarter_kelly_fraction
 
 Decision = Literal["BET", "WATCH", "PASS"]
+
+
+@dataclass(frozen=True)
+class OffensiveEvidence:
+    early_down_sustainable: bool | None = None
+    qb_ol_viable: bool | None = None
+    scoring_path_verified: bool | None = None
+    havoc_mismatch: bool | None = None
+    ball_security_acceptable: bool | None = None
+    discipline_acceptable: bool | None = None
+    opponent_adjusted_evidence: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -33,6 +44,8 @@ class Candidate:
     minutes_to_kickoff: int | None = None
     existing_exposure: float = 0.0
     stake_cap_dollars: float = 15.0
+    spread: float | None = None
+    offensive_evidence: OffensiveEvidence | None = None
 
 
 @dataclass(frozen=True)
@@ -81,7 +94,18 @@ def decide(
         blockers.append("invalid noncritical uncertainty multiplier")
     if candidate.existing_exposure < 0 or candidate.stake_cap_dollars < 0:
         blockers.append("invalid exposure or stake cap")
-    for gate in candidate.gates:
+    effective_gates = list(candidate.gates)
+    if candidate.spread is None:
+        blockers.append("market spread not supplied; underdog gate cannot be determined")
+    elif candidate.spread > 0:
+        if candidate.offensive_evidence is None:
+            blockers.append("universal underdog offensive evidence missing")
+        else:
+            effective_gates.append(universal_underdog_offense(
+                spread=candidate.spread,
+                **vars(candidate.offensive_evidence),
+            ))
+    for gate in effective_gates:
         if not gate.passed:
             blockers.append(f"{gate.name}: {', '.join(gate.reasons) or 'failed'}")
     if blockers:
@@ -93,7 +117,7 @@ def decide(
     assert candidate.base_lambda is not None
     assert candidate.offered_odds is not None
     assert candidate.bankroll is not None
-    lam = combine_lambda(candidate.base_lambda, candidate.gates)
+    lam = combine_lambda(candidate.base_lambda, effective_gates)
     lam *= candidate.noncritical_uncertainty_multiplier
     p = adjusted_probability(candidate.q_market, candidate.p_raw, lam)
     ev = expected_value_per_unit(p, candidate.offered_odds)
