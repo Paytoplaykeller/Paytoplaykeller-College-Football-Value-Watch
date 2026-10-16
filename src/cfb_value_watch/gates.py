@@ -158,3 +158,58 @@ def combine_lambda(base_lambda: float, results: Iterable[GateResult]) -> float:
     for result in results:
         lam *= result.lambda_multiplier
     return max(0.0, min(1.0, lam))
+
+
+def universal_underdog_offense(
+    *,
+    spread: float,
+    early_down_sustainable: bool | None,
+    qb_ol_viable: bool | None,
+    scoring_path_verified: bool | None,
+    havoc_mismatch: bool | None,
+    ball_security_acceptable: bool | None,
+    discipline_acceptable: bool | None,
+    opponent_adjusted_evidence: bool | None,
+) -> GateResult:
+    """Pregame offensive viability for ALL underdogs, including +1.5.
+
+    None means not verified, not a zero. Critical contradictions veto; other
+    documented weaknesses shrink lambda. This is a diagnostic, not a model
+    probability and never uses postgame information.
+    """
+    if spread <= 0:
+        return GateResult("Universal Underdog Offensive Viability Gate", True)
+    critical = {
+        "QB/OL viability": qb_ol_viable,
+        "sustainable scoring path": scoring_path_verified,
+        "opponent-adjusted offensive evidence": opponent_adjusted_evidence,
+    }
+    reasons = [f"{name} not verified" if value is None else f"{name} failed"
+               for name, value in critical.items() if value is not True]
+    mult = 1.0
+    optional = {
+        "early-down sustainability": early_down_sustainable,
+        "ball security": ball_security_acceptable,
+        "discipline": discipline_acceptable,
+    }
+    for name, value in optional.items():
+        if value is False:
+            reasons.append(f"{name} concern")
+            mult *= 0.85
+        elif value is None:
+            reasons.append(f"{name} unknown")
+            mult *= 0.93
+    if havoc_mismatch is True:
+        reasons.append("severe havoc/turnover mismatch")
+        mult *= 0.65
+    elif havoc_mismatch is None:
+        reasons.append("havoc mismatch not verified")
+        mult *= 0.93
+    return GateResult(
+        "Universal Underdog Offensive Viability Gate",
+        passed=(not any(value is not True for value in critical.values())
+                and havoc_mismatch is not True),
+        lambda_multiplier=mult,
+        stake_cap="B" if mult < 1 else None,
+        reasons=reasons,
+    )
