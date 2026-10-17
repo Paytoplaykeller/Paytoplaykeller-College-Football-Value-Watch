@@ -20,7 +20,6 @@ jobs:
         run: python -m pytest -q
 
   public-history:
-    if: contains(github.event.head_commit.message, '[historical]')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
