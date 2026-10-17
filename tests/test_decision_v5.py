@@ -152,7 +152,7 @@ def test_duplicate_same_game_exposure_caps_new_stake():
 
 def test_integer_spread_push_needs_three_way_ev():
     r = decide(sample(market_type="spread", spread=-3.0,
-                      calibrated_margin_distribution={-4: 0.2, -3: 0.2, 7: 0.6},
+                      calibrated_margin_distribution={-4: 0.2, 3: 0.2, 7: 0.6},
                       margin_distribution_attribution="synthetic regression fixture"))
     assert r.status == "WATCH"
     assert "push probability" in " ".join(r.reasons)
