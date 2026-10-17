@@ -144,7 +144,7 @@ def forecast(
     ordered=sorted(history,key=lambda g:g.kickoff)
     if len({g.game_id for g in ordered})!=len(ordered):
         raise ForecastUnavailable("Duplicate historical games")
-    if any(g.kickoff>=upcoming.as_of for g in ordered):
+    if any((g.kickoff.timestamp()+4*3600)>=upcoming.as_of.timestamp() for g in ordered):
         raise ForecastUnavailable("History contains games not finished before forecast")
     n=len(ordered)
     a=int(n*0.6)
