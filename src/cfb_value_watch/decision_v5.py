@@ -11,6 +11,7 @@ from typing import Literal, Sequence
 
 from .gates import GateResult, combine_lambda, universal_underdog_offense
 from .model import adjusted_probability, expected_value_per_unit, quarter_kelly_fraction
+from .margin_distribution import cover_push_loss
 
 Decision = Literal["BET", "WATCH", "PASS"]
 
@@ -46,6 +47,11 @@ class Candidate:
     stake_cap_dollars: float = 15.0
     spread: float | None = None
     offensive_evidence: OffensiveEvidence | None = None
+    market_type: Literal["spread", "moneyline", "total", "other"] = "other"
+    calibrated_margin_distribution: dict[int, float] | None = None
+    margin_distribution_attribution: str | None = None
+    existing_same_event_exposure: float = 0.0
+    same_event_cap_dollars: float = 40.0
 
 
 @dataclass(frozen=True)
@@ -92,8 +98,20 @@ def decide(
         blockers.append("positive bankroll not verified")
     if candidate.noncritical_uncertainty_multiplier < 0 or candidate.noncritical_uncertainty_multiplier > 1:
         blockers.append("invalid noncritical uncertainty multiplier")
-    if candidate.existing_exposure < 0 or candidate.stake_cap_dollars < 0:
+    if candidate.existing_exposure < 0 or candidate.stake_cap_dollars < 0 or candidate.existing_same_event_exposure < 0 or candidate.same_event_cap_dollars < 0:
         blockers.append("invalid exposure or stake cap")
+    if candidate.market_type == "spread":
+        if candidate.calibrated_margin_distribution is None or not candidate.margin_distribution_attribution:
+            blockers.append("calibrated exact-margin cover distribution missing")
+        elif candidate.spread is not None:
+            try:
+                cover, push, _ = cover_push_loss(candidate.calibrated_margin_distribution, candidate.spread)
+                if push > 1e-9:
+                    blockers.append("spread has push probability; binary EV calculation unsupported")
+                elif candidate.p_raw is not None and abs(cover - candidate.p_raw) > 1e-6:
+                    blockers.append("p_raw differs from exact spread cover probability")
+            except ValueError as exc:
+                blockers.append(f"invalid margin distribution: {exc}")
     effective_gates = list(candidate.gates)
     if candidate.spread is None:
         blockers.append("market spread not supplied; underdog gate cannot be determined")
@@ -126,7 +144,8 @@ def decide(
         return Recommendation(candidate.selection, "PASS", tuple(reasons), p, ev, lam)
     kelly = quarter_kelly_fraction(p, candidate.offered_odds)
     stake = min(candidate.bankroll * kelly, candidate.stake_cap_dollars,
-                max(0.0, candidate.bankroll - candidate.existing_exposure))
+                max(0.0, candidate.bankroll - candidate.existing_exposure),
+                max(0.0, candidate.same_event_cap_dollars - candidate.existing_same_event_exposure))
     if stake <= 0:
         return Recommendation(candidate.selection, "PASS", ("no remaining authorized exposure",), p, ev, lam, kelly)
     reasons.append("positive adjusted EV; critical checks and gate requirements satisfied")
