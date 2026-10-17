@@ -119,3 +119,40 @@ def test_minor_underdog_uncertainty_haircuts_not_auto_pass():
     r = decide(sample(spread=1.5, offensive_evidence=evidence))
     assert r.lambda_used is not None and r.lambda_used < 0.70
     assert r.status in ("BET", "PASS")
+
+
+def test_indiana_four_point_loss_is_loss_at_plus_three_half():
+    from cfb_value_watch.margin_distribution import cover_push_loss
+    assert cover_push_loss({-4: 1.0}, 3.5) == (0, 0, 1.0)
+    assert cover_push_loss({-4: 1.0}, 4.5) == (1.0, 0, 0.0)
+
+
+def test_projected_margin_alone_does_not_certify_spread_bet():
+    r = decide(sample(market_type="spread", spread=-3.5))
+    assert r.status == "WATCH"
+    assert "calibrated exact-margin" in " ".join(r.reasons)
+
+
+def test_exact_distribution_must_match_forecast_probability():
+    r = decide(sample(
+        market_type="spread", spread=-3.5,
+        calibrated_margin_distribution={-4: 0.60, 7: 0.40},
+        margin_distribution_attribution="synthetic regression fixture",
+    ))
+    assert r.status == "WATCH"
+    assert "p_raw differs" in " ".join(r.reasons)
+
+
+def test_duplicate_same_game_exposure_caps_new_stake():
+    r = decide(sample(existing_same_event_exposure=39.0))
+    assert r.status == "BET"
+    assert r.suggested_stake <= 1.0
+    assert decide(sample(existing_same_event_exposure=40.0)).status == "PASS"
+
+
+def test_integer_spread_push_needs_three_way_ev():
+    r = decide(sample(market_type="spread", spread=-3.0,
+                      calibrated_margin_distribution={-4: 0.2, -3: 0.2, 7: 0.6},
+                      margin_distribution_attribution="synthetic regression fixture"))
+    assert r.status == "WATCH"
+    assert "push probability" in " ".join(r.reasons)
