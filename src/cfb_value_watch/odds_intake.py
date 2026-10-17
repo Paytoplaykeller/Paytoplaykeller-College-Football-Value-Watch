@@ -14,7 +14,7 @@ import os
 
 SPORT_KEY = "americanfootball_ncaaf"
 ROOT = f"https://api.the-odds-api.com/v4/sports/{SPORT_KEY}/odds"
-BOOKMAKERS = "hardrockbet_fl,fanduel,draftkings,betmgm,pinnacle"
+BOOKMAKERS = "fanduel,draftkings,betmgm,pinnacle"\nHARD_ROCK_KEY = "hardrockbet_fl"
 
 
 class OddsIntakeError(ValueError):
@@ -42,7 +42,7 @@ def fetch_cfb_odds(*, api_key: str | None = None, markets: str = "h2h,spreads,to
         raise OddsIntakeError("Unexpected odds payload")
     return {"events": events, "source_url": ROOT,
             "retrieved_at": datetime.now(timezone.utc).isoformat(),
-            "provider": "The Odds API", "read_only": True}
+            "provider": "The Odds API", "read_only": True,\n            "hardrock_availability": "UNVERIFIED"}
 
 
 def paired_cfb_markets(snapshot: dict, *, now: datetime | None = None,
@@ -106,3 +106,51 @@ def paired_cfb_markets(snapshot: dict, *, now: datetime | None = None,
                         "retrieved_at": snapshot["retrieved_at"], "source_url": snapshot["source_url"],
                     })
     return pairs
+
+def compare_public_markets(snapshot: dict, *, now: datetime | None = None,
+                           max_age_seconds: int = 900) -> list[dict]:
+    """Rank price differences only for identical markets/lines.
+
+    These are research candidates, NEVER BET authorizations. Different spread
+    points or totals cannot be compared as if they were identical contracts.
+    """
+    from collections import defaultdict
+    from .model import no_vig_two_way
+    groups = defaultdict(list)
+    for p in paired_cfb_markets(snapshot, now=now, max_age_seconds=max_age_seconds):
+        if p["bookmaker"] not in {"fanduel", "draftkings", "betmgm", "pinnacle"}:
+            continue
+        key = (p["event_id"], p["market"], p["selection"], p["line"])
+        groups[key].append(p)
+    comparisons = []
+    for (event_id, market, selection, line), quotes in groups.items():
+        if len({q["bookmaker"] for q in quotes}) < 2:
+            continue
+        def decimal(odds):
+            return 1 + (odds / 100 if odds > 0 else 100 / -odds)
+        best = max(quotes, key=lambda q: decimal(q["price"]))
+        prior = []
+        for q in quotes:
+            try:
+                p, _ = no_vig_two_way(q["price"], q["opposite_price"])
+            except (ValueError, ZeroDivisionError):
+                continue
+            prior.append(p)
+        if not prior:
+            continue
+        prior.sort()
+        median = (prior[(len(prior)-1)//2] + prior[len(prior)//2]) / 2
+        comparisons.append({
+            "event_id": event_id, "market": market, "selection": selection,
+            "line": line, "best_public_book": best["bookmaker"],
+            "best_public_price": best["price"], "market_prior": median,
+            "books_compared": len(quotes),
+            "published_at": best["published_at"],
+            "hardrock_status": "UNVERIFIED",
+            "status": "WATCH",
+            "reason": "No confirmed Hard Rock offer or independent calibrated forecast",
+            "research_only": True,
+        })
+    return sorted(comparisons, key=lambda x: (
+        -x["books_compared"], x["event_id"], x["market"], x["selection"], str(x["line"])
+    ))
