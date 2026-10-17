@@ -14,7 +14,8 @@ import os
 
 SPORT_KEY = "americanfootball_ncaaf"
 ROOT = f"https://api.the-odds-api.com/v4/sports/{SPORT_KEY}/odds"
-BOOKMAKERS = "fanduel,draftkings,betmgm,pinnacle"\nHARD_ROCK_KEY = "hardrockbet_fl"
+BOOKMAKERS = "fanduel,draftkings,betmgm,pinnacle"
+HARD_ROCK_KEY = "hardrockbet_fl"
 
 
 class OddsIntakeError(ValueError):
