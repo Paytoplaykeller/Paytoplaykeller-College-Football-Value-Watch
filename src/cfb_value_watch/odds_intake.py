@@ -43,7 +43,8 @@ def fetch_cfb_odds(*, api_key: str | None = None, markets: str = "h2h,spreads,to
         raise OddsIntakeError("Unexpected odds payload")
     return {"events": events, "source_url": ROOT,
             "retrieved_at": datetime.now(timezone.utc).isoformat(),
-            "provider": "The Odds API", "read_only": True,\n            "hardrock_availability": "UNVERIFIED"}
+            "provider": "The Odds API", "read_only": True,
+            "hardrock_availability": "UNVERIFIED"}
 
 
 def paired_cfb_markets(snapshot: dict, *, now: datetime | None = None,
