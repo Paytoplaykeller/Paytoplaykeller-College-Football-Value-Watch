@@ -49,3 +49,31 @@ def test_complete_bowl_roster_not_automatically_bet():
     result=postseason_gate(postseason())
     assert result["status"]=="ROSTER_CHECKS_COMPLETE"
     assert result["bet_authorized"] is False
+
+
+def test_bowl_decision_requires_postseason_report():
+    from cfb_value_watch.decision_v5 import Candidate,decide
+    c=Candidate(selection="Bowl favorite",offered_odds=-110,
+        q_market=.5,p_raw=.6,base_lambda=.8,bankroll=500,
+        model_dispersion_points=1.0,critical_availability_verified=True,
+        offered_price_verified=True,source_attribution="synthetic",
+        market_type="other",spread=-3.5,minutes_to_kickoff=60,
+        is_postseason=True,postseason_evidence=None)
+    r=decide(c)
+    assert r.status=="PASS"
+    assert any("postseason roster" in reason for reason in r.reasons)
+
+
+def test_bowl_decision_blocks_unverified_optouts():
+    from dataclasses import replace
+    from cfb_value_watch.decision_v5 import Candidate,decide
+    c=Candidate(selection="Bowl favorite",offered_odds=-110,
+        q_market=.5,p_raw=.6,base_lambda=.8,bankroll=500,
+        model_dispersion_points=1.0,critical_availability_verified=True,
+        offered_price_verified=True,source_attribution="synthetic",
+        market_type="other",spread=-3.5,minutes_to_kickoff=60,
+        is_postseason=True,postseason_evidence=postseason(
+            opt_outs_and_transfers_verified=False))
+    r=decide(c)
+    assert r.status=="PASS"
+    assert any("opt-outs" in reason for reason in r.reasons)
