@@ -133,3 +133,25 @@ jobs:
             data/market_audit/market_dislocation_holdout.json
             data/market_audit/matched_market_network.csv
           retention-days: 30
+
+  conference-holdout:
+    needs: [network-validation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e . pandas
+      - uses: actions/download-artifact@v4
+        with:
+          name: cfb-v6-network-2024-2025
+          path: data/network_validation
+      - name: Test 2024 and 2025 cross-conference strength residuals
+        run: python -m cfb_value_watch.conference_audit_cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cfb-conference-2024-2025-audit
+          path: data/conference_audit/conference_holdout.json
+          retention-days: 30
