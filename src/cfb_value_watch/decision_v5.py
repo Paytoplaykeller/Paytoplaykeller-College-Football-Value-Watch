@@ -14,6 +14,7 @@ from .model import adjusted_probability, expected_value_per_unit, quarter_kelly_
 from .margin_distribution import cover_push_loss
 from .totals_gate import TotalsEvidence, totals_blockers
 from .favorite_fragility import FavoriteFragilityEvidence, favorite_fragility_gate
+from .conference_postseason import PostseasonAvailability, postseason_gate
 
 Decision = Literal["BET", "WATCH", "PASS"]
 
@@ -56,6 +57,8 @@ class Candidate:
     same_event_cap_dollars: float = 40.0
     totals_evidence: TotalsEvidence | None = None
     favorite_fragility_evidence: FavoriteFragilityEvidence | None = None
+    is_postseason: bool = False
+    postseason_evidence: PostseasonAvailability | None = None
 
 
 @dataclass(frozen=True)
@@ -127,6 +130,17 @@ def decide(
                 blockers.append("favorite margin fragility contradiction requires independent rerating")
         except ValueError as exc:
             blockers.append(f"favorite fragility evidence invalid: {exc}")
+    if candidate.is_postseason:
+        if candidate.postseason_evidence is None:
+            blockers.append("postseason roster status unverified")
+        else:
+            try:
+                postseason = postseason_gate(candidate.postseason_evidence)
+                if postseason["status"] != "ROSTER_CHECKS_COMPLETE":
+                    blockers.append("postseason availability unresolved: " +
+                                    ", ".join(postseason["missing"]))
+            except ValueError as exc:
+                blockers.append(f"invalid postseason report: {exc}")
     effective_gates = list(candidate.gates)
     if candidate.market_type != "total" and candidate.spread is None:
         blockers.append("market spread not supplied; underdog gate cannot be determined")
