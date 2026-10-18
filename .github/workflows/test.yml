@@ -88,3 +88,21 @@ jobs:
           name: cfb-v6-opponent-network-blend-audit
           path: data/network_validation/v6_blend_validation.json
           retention-days: 30
+
+  kentucky-byu-fsu-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e . pandas pyarrow
+      - name: Freeze Oct 17 2026 pregame replay
+        run: python -m cfb_value_watch.replay_oct17 --as-of 2026-10-17T18:00:00-04:00 --out data/replay_2026_10_17.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: cfb-v6-kentucky-byu-fsu-frozen-replay
+          path: data/replay_2026_10_17.json
+          retention-days: 30
