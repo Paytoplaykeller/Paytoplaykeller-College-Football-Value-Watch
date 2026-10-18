@@ -62,3 +62,29 @@ jobs:
             data/network_validation/schedule_network_predictions.csv
             data/network_validation/network_validation.json
           retention-days: 30
+
+  network-blend:
+    needs: [public-history, network-validation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e . pandas
+      - uses: actions/download-artifact@v4
+        with:
+          name: cfb-public-history-2018-2025
+          path: data/public_history
+      - uses: actions/download-artifact@v4
+        with:
+          name: cfb-v6-network-2024-2025
+          path: data/network_validation
+      - name: Freeze 2024 network blend and evaluate 2025
+        run: python -m cfb_value_watch.network_blend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cfb-v6-opponent-network-blend-audit
+          path: data/network_validation/v6_blend_validation.json
+          retention-days: 30
