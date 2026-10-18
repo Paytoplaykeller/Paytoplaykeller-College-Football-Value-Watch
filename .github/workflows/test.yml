@@ -40,3 +40,25 @@ jobs:
             data/public_history/pregame_features_2018_2025.csv
             data/public_history/validation_report.json
           retention-days: 30
+
+  network-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install network data dependencies
+        run: python -m pip install -e . pandas pyarrow
+      - name: Run pregame network backtest
+        run: python -m cfb_value_watch.network_backtest --out data/network_validation
+      - name: Upload predictions and holdout metrics
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfb-v6-network-2024-2025
+          path: |
+            data/network_validation/schedule_network_predictions.csv
+            data/network_validation/network_validation.json
+          retention-days: 30
