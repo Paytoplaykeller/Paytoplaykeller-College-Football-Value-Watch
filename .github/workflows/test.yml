@@ -106,3 +106,30 @@ jobs:
           name: cfb-v6-kentucky-byu-fsu-frozen-replay
           path: data/replay_2026_10_17.json
           retention-days: 30
+
+  historical-market-audit:
+    needs: [network-validation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install historical data dependencies
+        run: python -m pip install -e . pandas pyarrow
+      - uses: actions/download-artifact@v4
+        with:
+          name: cfb-v6-network-2024-2025
+          path: data/network_validation
+      - name: Compare historical spreads against frozen network forecasts
+        run: python -m cfb_value_watch.market_backtest
+      - name: Upload full-board holdout results
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfb-market-dislocation-2024-2025
+          path: |
+            data/market_audit/market_dislocation_holdout.json
+            data/market_audit/matched_market_network.csv
+          retention-days: 30
