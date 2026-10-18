@@ -7,7 +7,7 @@ from cfb_value_watch.underdog_regime import (
 NOW=datetime(2026,10,17,22,tzinfo=timezone.utc)
 
 def sample(i,cover=True):
-    kickoff=NOW-timedelta(days=365+i)
+    kickoff=NOW-timedelta(days=365+2*i)
     return UnderdogSample(
         game_id=f"g{i}",kickoff=kickoff,snapshot_at=kickoff-timedelta(hours=4),
         spread=7.5,cover=cover,no_vig_cover_probability=.5,
