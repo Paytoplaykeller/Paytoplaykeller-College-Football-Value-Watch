@@ -13,6 +13,7 @@ from .gates import GateResult, combine_lambda, universal_underdog_offense
 from .model import adjusted_probability, expected_value_per_unit, quarter_kelly_fraction
 from .margin_distribution import cover_push_loss
 from .totals_gate import TotalsEvidence, totals_blockers
+from .favorite_fragility import FavoriteFragilityEvidence, favorite_fragility_gate
 
 Decision = Literal["BET", "WATCH", "PASS"]
 
@@ -54,6 +55,7 @@ class Candidate:
     existing_same_event_exposure: float = 0.0
     same_event_cap_dollars: float = 40.0
     totals_evidence: TotalsEvidence | None = None
+    favorite_fragility_evidence: FavoriteFragilityEvidence | None = None
 
 
 @dataclass(frozen=True)
@@ -116,6 +118,15 @@ def decide(
                 blockers.append(f"invalid margin distribution: {exc}")
     if candidate.market_type == "total":
         blockers.extend(totals_blockers(candidate.totals_evidence, candidate.p_raw))
+    if candidate.favorite_fragility_evidence is not None and candidate.market_type == "spread":
+        try:
+            fragility = favorite_fragility_gate(candidate.favorite_fragility_evidence)
+            if fragility["status"] == "INCOMPLETE_RESEARCH":
+                blockers.append("favorite margin fragility assessment incomplete")
+            elif fragility["flag"] and candidate.spread is not None and candidate.spread < 0:
+                blockers.append("favorite margin fragility contradiction requires independent rerating")
+        except ValueError as exc:
+            blockers.append(f"favorite fragility evidence invalid: {exc}")
     effective_gates = list(candidate.gates)
     if candidate.market_type != "total" and candidate.spread is None:
         blockers.append("market spread not supplied; underdog gate cannot be determined")
