@@ -12,6 +12,7 @@ from typing import Literal, Sequence
 from .gates import GateResult, combine_lambda, universal_underdog_offense
 from .model import adjusted_probability, expected_value_per_unit, quarter_kelly_fraction
 from .margin_distribution import cover_push_loss
+from .totals_gate import TotalsEvidence, totals_blockers
 
 Decision = Literal["BET", "WATCH", "PASS"]
 
@@ -52,6 +53,7 @@ class Candidate:
     margin_distribution_attribution: str | None = None
     existing_same_event_exposure: float = 0.0
     same_event_cap_dollars: float = 40.0
+    totals_evidence: TotalsEvidence | None = None
 
 
 @dataclass(frozen=True)
@@ -112,10 +114,12 @@ def decide(
                     blockers.append("p_raw differs from exact spread cover probability")
             except ValueError as exc:
                 blockers.append(f"invalid margin distribution: {exc}")
+    if candidate.market_type == "total":
+        blockers.extend(totals_blockers(candidate.totals_evidence, candidate.p_raw))
     effective_gates = list(candidate.gates)
-    if candidate.spread is None:
+    if candidate.market_type != "total" and candidate.spread is None:
         blockers.append("market spread not supplied; underdog gate cannot be determined")
-    elif candidate.spread > 0:
+    elif candidate.market_type != "total" and candidate.spread is not None and candidate.spread > 0:
         if candidate.offensive_evidence is None:
             blockers.append("universal underdog offensive evidence missing")
         else:
