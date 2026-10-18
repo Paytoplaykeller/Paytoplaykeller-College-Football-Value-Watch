@@ -16,6 +16,13 @@ from .schedule_network import NetworkGame, fit_network
 URL="https://github.com/sportsdataverse/sportsdataverse-data/releases/download/cfb_schedules/cfb_schedules_{year}.parquet"
 AS_OF="2026-10-17T18:00:00-04:00"
 TARGETS=(("Kentucky","Oklahoma"),("Notre Dame","BYU"),("Florida State","Miami"))
+
+def normalize_team(name:str)->str:
+    import re
+    text=re.sub(r"[^a-z0-9]+","",str(name).lower())
+    if text in {"miamifl","miamiflorida","miamihurricanes"}: return "miami"
+    if text in {"brighamyoung","byucougars"}: return "byu"
+    return text
 COLS=["game_id","season","start_date","completed","fbs_game","home_id","away_id",
       "home_team","away_team","home_conference","away_conference","neutral_site",
       "home_points","away_points"]
@@ -42,10 +49,12 @@ def replay(out:Path, as_of:datetime):
             bool(g.neutral_site),int(g.home_points),int(g.away_points)))
     ratings=fit_network(history,as_of,min_games=100)
     rows=[]
+    games["away_normalized"]=games.away_team.map(normalize_team)
+    games["home_normalized"]=games.home_team.map(normalize_team)
     for away,home in TARGETS:
         matches=games[(games.season==2026)&
-            (games.away_team.astype(str).str.casefold()==away.casefold())&
-            (games.home_team.astype(str).str.casefold()==home.casefold())]
+            (games.away_normalized==normalize_team(away))&
+            (games.home_normalized==normalize_team(home))]
         if len(matches)!=1:
             rows.append({"matchup":f"{away} at {home}","status":"NOT_IDENTIFIED",
                          "match_count":len(matches)})
