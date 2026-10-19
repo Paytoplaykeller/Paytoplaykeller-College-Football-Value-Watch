@@ -30,3 +30,31 @@ def test_stale_data_blocks_update():
                       "completed":True,"home_points":6,"away_points":2}])
     with pytest.raises(ValueError,match="stale"):
         generate(df,NOW)
+
+
+def test_weekly_snapshot_ignores_future_game_score():
+    rows=[]
+    for i in range(251):
+        h=i%10
+        a=(i+1)%10
+        kickoff=(NOW-timedelta(days=75)+timedelta(hours=i%120)
+                 if i<230 else NOW-timedelta(days=2)+timedelta(minutes=i-230))
+        if i==250:
+            kickoff=NOW+timedelta(days=5)
+        rows.append({
+            "game_id":str(i),"season":2026,"kickoff":pd.Timestamp(kickoff),
+            "start_date":kickoff.isoformat(),"completed":True,"fbs_game":True,
+            "home_id":str(h),"away_id":str(a),
+            "home_team":f"Team{h}","away_team":f"Team{a}",
+            "home_conference":"SEC" if h<5 else "Big Ten",
+            "away_conference":"SEC" if a<5 else "Big Ten",
+            "home_points":24,"away_points":17,"neutral_site":False
+        })
+    df=pd.DataFrame(rows)
+    first=generate(df,NOW)
+    assert first["data_coverage"]["current_season_fbs_completed_games"]==250
+    assert len(first["teams"])==10
+    assert first["upcoming_games"][0]["status"]=="RESEARCH_ONLY_NOT_BET"
+    df.loc[df.game_id=="250","home_points"]=100
+    second=generate(df,NOW)
+    assert first["teams"]==second["teams"]
