@@ -13,10 +13,10 @@ def fixtures():
                           start_date=(base+timedelta(days=7*i)).isoformat(),
                           neutral_site=False))
         plays += [
-            dict(game_id=i+1, pos_team="A", def_pos_team="B",rush=True,pass=False,
+            dict(game_id=i+1, pos_team="A", def_pos_team="B",rush=True,**{"pass":False},
                  EPA=0.2,firstD_by_poss=True,td_play=False,sack=False,
                  int=False,fumble_vec=False,yds_rushed=15),
-            dict(game_id=i+1, pos_team="B", def_pos_team="A",rush=False,pass=True,
+            dict(game_id=i+1, pos_team="B", def_pos_team="A",rush=False,**{"pass":True},
                  EPA=-0.2,firstD_by_poss=False,td_play=False,sack=True,
                  int=False,fumble_vec=False,yds_receiving=0)
         ]
