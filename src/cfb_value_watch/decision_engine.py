@@ -83,21 +83,49 @@ def evaluate(record: Mapping, *, now: datetime | None = None) -> Decision:
     dispersion = number("dispersion_points", 0)
     bank = number("available_bankroll", 0)
     stake_cap = number("bankroll_stake_cap", 0)
+    minor_uncertainties = []
     for role in REQUIRED_ROLES:
         detail = (record.get("availability") or {}).get(role)
-        if not isinstance(detail, dict) or detail.get("checked") is not True or not detail.get("source") or not detail.get("checked_at"):
-            errors.append(f"availability evidence missing: {role}")
-        else:
-            try:
-                checked = datetime.fromisoformat(detail["checked_at"])
-                if checked.tzinfo is None or not 0 <= (now-checked).total_seconds() <= 86400:
-                    errors.append(f"availability evidence stale: {role}")
-            except (TypeError, ValueError):
-                errors.append(f"availability timestamp invalid: {role}")
+        if not isinstance(detail, dict):
+            errors.append(f"availability assessment missing: {role}")
+            continue
+        material = detail.get("material")
+        if not isinstance(material, bool):
+            errors.append(f"materiality missing: {role}")
+            continue
+        if detail.get("checked") is not True:
+            if material:
+                errors.append(f"material availability evidence missing: {role}")
+            elif detail.get("uncertainty_accounted_for") is True and detail.get("reason"):
+                minor_uncertainties.append(role)
+            else:
+                errors.append(f"unaccounted minor availability uncertainty: {role}")
+            continue
+        if not detail.get("source") or not detail.get("checked_at"):
+            errors.append(f"availability evidence incomplete: {role}")
+            continue
+        try:
+            checked = datetime.fromisoformat(detail["checked_at"])
+            if checked.tzinfo is None or not 0 <= (now-checked).total_seconds() <= 86400:
+                errors.append(f"availability evidence stale: {role}")
+        except (TypeError, ValueError):
+            errors.append(f"availability timestamp invalid: {role}")
+    # The caller must demonstrate that every unverified minor item has already
+    # reduced lambda. We do not choose a haircut or invent its magnitude.
+    if minor_uncertainties and record.get("minor_uncertainty_lambda_applied") is not True:
+        errors.append("minor uncertainty not incorporated into lambda")
     for gate in REQUIRED_GATES:
         result = (record.get("gates") or {}).get(gate)
-        if not isinstance(result, dict) or result.get("passed") is not True or not result.get("reason"):
-            errors.append(f"gate unverified/failed: {gate}")
+        if not isinstance(result, dict) or not result.get("reason"):
+            errors.append(f"gate assessment missing: {gate}")
+        elif result.get("applicable") is False:
+            if not result.get("applicability_evidence"):
+                errors.append(f"gate nonapplicability unsubstantiated: {gate}")
+        elif result.get("applicable") is True:
+            if result.get("passed") is not True:
+                errors.append(f"gate failed: {gate}")
+        else:
+            errors.append(f"gate applicability unknown: {gate}")
     if record.get("price_limit_verified") is not True:
         errors.append("max playable price/line not independently verified")
     if record.get("opposing_case_checked") is not True:
