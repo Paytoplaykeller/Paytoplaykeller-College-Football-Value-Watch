@@ -1,5 +1,7 @@
 name: Build historical pregame research dataset
 on:
+  push:
+    branches: [feature/evidence-backed-bet-evaluator]
   workflow_dispatch:
 jobs:
   build:
