@@ -146,7 +146,7 @@ def build_pregame_snapshots(schedules, play_by_play, *, minimum_prior_games=3, w
                 )
         output.append({
             "game_id":game_id, "kickoff":kickoff.isoformat(),
-            "as_of":kickoff.isoformat(),
+            "as_of":(kickoff-timedelta(minutes=1)).isoformat(),
             "home_team":home, "away_team":away,
             "features":observed,
             "missing_features":list(AVAILABILITY_FIELDS) if observed else
