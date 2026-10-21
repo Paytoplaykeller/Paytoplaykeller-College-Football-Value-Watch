@@ -69,6 +69,13 @@ def evaluate(record: Mapping, *, now: datetime | None = None) -> Decision:
         errors.append("quote older than 15 minutes or future")
     if not record.get("forecast_source") or not record.get("forecast_timestamp"):
         errors.append("attributable, timestamped independent forecast required")
+    else:
+        try:
+            ft = datetime.fromisoformat(record["forecast_timestamp"])
+            if ft.tzinfo is None or not 0 <= (now-ft).total_seconds() <= 86400:
+                errors.append("forecast stale or timestamp invalid")
+        except (TypeError, ValueError):
+            errors.append("forecast timestamp invalid")
     if record.get("forecast_uses_market_implied_probability") is not False:
         errors.append("forecast independence unverified")
     raw = number("p_raw", 0, 1)
@@ -80,6 +87,13 @@ def evaluate(record: Mapping, *, now: datetime | None = None) -> Decision:
         detail = (record.get("availability") or {}).get(role)
         if not isinstance(detail, dict) or detail.get("checked") is not True or not detail.get("source") or not detail.get("checked_at"):
             errors.append(f"availability evidence missing: {role}")
+        else:
+            try:
+                checked = datetime.fromisoformat(detail["checked_at"])
+                if checked.tzinfo is None or not 0 <= (now-checked).total_seconds() <= 86400:
+                    errors.append(f"availability evidence stale: {role}")
+            except (TypeError, ValueError):
+                errors.append(f"availability timestamp invalid: {role}")
     for gate in REQUIRED_GATES:
         result = (record.get("gates") or {}).get(gate)
         if not isinstance(result, dict) or result.get("passed") is not True or not result.get("reason"):
