@@ -38,6 +38,21 @@ def convert_quote_and_forecast(upcoming, prediction, quote, evidence):
     line = quote.get("line")
     if isinstance(line, bool) or not isinstance(line, (int, float)):
         errors.append("numeric spread required")
+    # The existing decision engine assumes two decisive outcomes. Integer-point
+    # spreads can push and require three-outcome probability/EV/Kelly support.
+    # Fail closed until that settlement-aware evaluator is implemented.
+    if isinstance(line, (int, float)) and not isinstance(line, bool) and float(line).is_integer():
+        errors.append("whole-point spread has push risk; push-aware EV/Kelly not implemented")
+    # Pairing cannot be asserted merely by assigning opposite_source=source.
+    # The exact opposing quote must have its own observed, matched evidence.
+    if quote.get("paired_same_book_same_line") is not True:
+        errors.append("verified same-book, same-line opposite market required")
+    if not quote.get("opposite_source") or quote.get("opposite_source") != quote.get("source"):
+        errors.append("opposite price must be evidenced from the identical sportsbook")
+    if quote.get("opposite_market") != quote.get("market"):
+        errors.append("opposing market type mismatch")
+    if quote.get("opposite_line") != (-float(line) if isinstance(line, (int, float)) and not isinstance(line, bool) else None):
+        errors.append("opposite spread line does not match")
     if quote.get("executable") is True and quote.get("confirmation") != "user_verified_hard_rock":
         errors.append("executable quote requires explicit Hard Rock user verification")
     if errors:
@@ -49,7 +64,7 @@ def convert_quote_and_forecast(upcoming, prediction, quote, evidence):
         offered_odds=quote.get("price"),
         opposite_odds=quote.get("opposite_price"),
         source=quote.get("source"),
-        opposite_source=quote.get("source"),
+        opposite_source=quote.get("opposite_source"),
         executable=(quote.get("executable") is True),
         quote_time=datetime.fromisoformat(quote["quote_time"]),
         no_vig_same_market=quote.get("paired_same_book_same_line") is True,
