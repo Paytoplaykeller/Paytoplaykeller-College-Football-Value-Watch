@@ -77,7 +77,7 @@ def _game_team_stats(plays):
 
 
 def _summarize(recent, suffix=""):
-    group = [g[suffix] for g in recent if suffix in g]
+    group = [g[suffix] for g in recent if suffix in g and g[suffix].get("plays", 0) > 0]
     n = sum(x["plays"] for x in group)
     if not n:
         return None
