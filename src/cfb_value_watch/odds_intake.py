@@ -14,7 +14,7 @@ import os
 
 SPORT_KEY = "americanfootball_ncaaf"
 ROOT = f"https://api.the-odds-api.com/v4/sports/{SPORT_KEY}/odds"
-BOOKMAKERS = "fanduel,draftkings,betmgm,pinnacle"
+BOOKMAKERS = "fanduel,draftkings,betmgm,pinnacle,hardrockbet_fl"
 HARD_ROCK_KEY = "hardrockbet_fl"
 
 
@@ -120,7 +120,7 @@ def compare_public_markets(snapshot: dict, *, now: datetime | None = None,
     from .model import no_vig_two_way
     groups = defaultdict(list)
     for p in paired_cfb_markets(snapshot, now=now, max_age_seconds=max_age_seconds):
-        if p["bookmaker"] not in {"fanduel", "draftkings", "betmgm", "pinnacle"}:
+        if p["bookmaker"] not in {"fanduel", "draftkings", "betmgm", "pinnacle", "hardrockbet_fl"}:
             continue
         key = (p["event_id"], p["market"], p["selection"], p["line"])
         groups[key].append(p)
