@@ -16,6 +16,7 @@ def fixture():
     quote = dict(event_id="game1", home_team="Home",away_team="Away",
                  market="spreads",selection="away",line=6.5,price=-110,
                  opposite_price=-110,source="user-confirmed",
+                 opposite_source="user-confirmed",opposite_market="spreads",opposite_line=-6.5,
                  quote_time=now.isoformat(),executable=True,
                  paired_same_book_same_line=True,
                  confirmation="user_verified_hard_rock")
@@ -47,3 +48,28 @@ def test_no_total_forecast_without_total_model():
     g,p,q,e=fixture()
     q["market"]="totals"
     assert convert_quote_and_forecast(g,p,q,e)[0] is None
+
+
+def test_integer_spread_push_is_not_approved_by_binary_ev():
+    g,p,q,e=fixture()
+    q["line"]=6.0
+    q["opposite_line"]=-6.0
+    row,errs=convert_quote_and_forecast(g,p,q,e)
+    assert row is None
+    assert any("push" in error for error in errs)
+
+
+def test_opposite_market_must_be_observed_and_same_line():
+    g,p,q,e=fixture()
+    q["opposite_line"]=-7.5
+    row,errs=convert_quote_and_forecast(g,p,q,e)
+    assert row is None
+    assert any("opposite spread" in error for error in errs)
+
+
+def test_opposite_source_must_match_book():
+    g,p,q,e=fixture()
+    q["opposite_source"]="other sportsbook"
+    row,errs=convert_quote_and_forecast(g,p,q,e)
+    assert row is None
+    assert any("identical sportsbook" in error for error in errs)
