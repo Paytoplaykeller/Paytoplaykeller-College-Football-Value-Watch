@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import pytest
 from cfb_value_watch.pregame_features import build_pregame_snapshots, AVAILABILITY_FIELDS
 
 
@@ -27,7 +28,7 @@ def test_no_future_game_data_can_change_its_own_pregame_features():
     games,plays=fixtures()
     before=build_pregame_snapshots(games,plays,minimum_prior_games=3)
     assert before[0]["bet_now_eligible"] is False
-    assert before[3]["features"]["home_off_epa"] == 0.2
+    assert before[3]["features"]["home_off_epa"] == pytest.approx(0.2)
     assert set(before[3]["missing_features"]) == set(AVAILABILITY_FIELDS)
     changed=[dict(p) for p in plays]
     changed[-2]["EPA"]=99.0
