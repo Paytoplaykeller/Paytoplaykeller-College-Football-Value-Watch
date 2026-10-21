@@ -40,8 +40,8 @@ def _rate(value):
 def _game_team_stats(plays):
     totals = defaultdict(lambda: dict(plays=0, epa=0.0, successes=0, havoc=0, explosive=0))
     for p in plays:
-        offense = p.get("pos_team")
-        defense = p.get("def_pos_team")
+        offense = str(p.get("pos_team_id") or p.get("pos_team") or "")
+        defense = str(p.get("def_pos_team_id") or p.get("def_pos_team") or "")
         if not offense or not defense or offense == defense:
             continue
         # Exclude special teams and other non-scrimmage records.
@@ -119,7 +119,8 @@ def build_pregame_snapshots(schedules, play_by_play, *, minimum_prior_games=3, w
     history = defaultdict(list)
     output = []
     for kickoff, s in completed:
-        home, away = s.get("home_team"), s.get("away_team")
+        home = str(s.get("home_id") or s.get("home_team") or "")
+        away = str(s.get("away_id") or s.get("away_team") or "")
         game_id = str(s["game_id"])
         if not home or not away:
             continue
@@ -147,7 +148,7 @@ def build_pregame_snapshots(schedules, play_by_play, *, minimum_prior_games=3, w
         output.append({
             "game_id":game_id, "kickoff":kickoff.isoformat(),
             "as_of":(kickoff-timedelta(minutes=1)).isoformat(),
-            "home_team":home, "away_team":away,
+            "home_team":s.get("home_team"), "away_team":s.get("away_team"),
             "features":observed,
             "missing_features":list(AVAILABILITY_FIELDS) if observed else
                 list(OBSERVED_FIELDS + AVAILABILITY_FIELDS),
