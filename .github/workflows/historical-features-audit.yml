@@ -21,8 +21,8 @@ jobs:
           from cfb_value_watch.pregame_features import build_pregame_snapshots, OBSERVED_FIELDS, AVAILABILITY_FIELDS
           s=download_archive('schedules',2024,'/tmp/cfb-sch')
           p=download_archive('pbp',2024,'/tmp/cfb-pbp')
-          cols=['game_id','pos_team','def_pos_team','rush','pass','EPA','firstD_by_poss','td_play','sack','int','fumble_vec','yds_rushed','yds_receiving']
-          schedule_cols=['game_id','fbs_game','completed','home_team','away_team','home_points','away_points','start_date','neutral_site']
+          cols=['game_id','pos_team_id','def_pos_team_id','pos_team','def_pos_team','rush','pass','EPA','firstD_by_poss','td_play','sack','int','fumble_vec','yds_rushed','yds_receiving']
+          schedule_cols=['game_id','fbs_game','completed','home_id','away_id','home_team','away_team','home_points','away_points','start_date','neutral_site']
           sched=pq.read_table(s['path'],columns=schedule_cols).to_pylist()
           plays=pq.read_table(p['path'],columns=cols).to_pylist()
           rows=build_pregame_snapshots(sched,plays)
