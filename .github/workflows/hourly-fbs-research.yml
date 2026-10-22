@@ -22,6 +22,7 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: python -m cfb_value_watch.market_scan_cli
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: hourly-fbs-public-research
           path: research_output/hourly_public_board.json
