@@ -46,7 +46,12 @@ def main():
         "compared_contracts": len(result["candidates"]),
         "blockers": result["blockers"],
     }, indent=2))
+    # A successful process must mean that the public feed actually returned
+    # usable events, not merely that a blocker report was written.
+    if result["status"] != "RESEARCH_ONLY" or not result.get("events_seen"):
+        return 2
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
