@@ -1,0 +1,28 @@
+name: Inspect historical feature sources
+on:
+  push:
+    branches: [feature/evidence-backed-bet-evaluator]
+  workflow_dispatch:
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e . pyarrow
+      - name: Inspect archive schemas with source metadata
+        run: |
+          python - <<'PY'
+          from cfb_value_watch.public_archive import download_archive
+          import pyarrow.parquet as pq
+          for kind in ('betting','pbp','schedules'):
+              d=download_archive(kind,2024,'/tmp/'+kind)
+              f=pq.ParquetFile(d['path'])
+              cols=f.schema_arrow.names
+              print('ARCHIVE_SCHEMA',kind,'rows',f.metadata.num_rows,'columns',repr(cols[:180]))
+              sample=f.read_row_group(0,columns=cols[:min(8,len(cols))]).slice(0,1).to_pylist()
+              print('ARCHIVE_SAMPLE',kind,repr(sample)[:1500])
+          PY
