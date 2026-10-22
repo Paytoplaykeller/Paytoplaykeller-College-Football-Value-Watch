@@ -1,5 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
+from math import isfinite
+from numbers import Real
 from typing import Iterable
 
 
@@ -144,17 +146,81 @@ def offensive_survival_counterbalance(
     }
     verified = [name for name, ok in factors.items() if ok]
     passed = len(verified) >= 3
+    # The 1.15 confidence boost was not calibrated on independent games.
+    # Retain these facts as a diagnostic, never as a probability or stake lift.
     return GateResult(
         "Offensive-Survival Counterbalance Gate",
         passed=True,
-        lambda_multiplier=1.15 if passed else 1.0,
-        stake_cap="B+" if passed else None,
-        reasons=[f"verified counterbalance factors: {', '.join(verified)}"] if verified else [],
+        lambda_multiplier=1.0,
+        stake_cap=None,
+        reasons=[f"verified counterbalance factors: {', '.join(verified)} (research-only, no confidence boost)"] if passed else
+                ["insufficient independent offensive-survival evidence for a counterbalance"],
     )
 
 
 def combine_lambda(base_lambda: float, results: Iterable[GateResult]) -> float:
+    """Confidence haircuts only; never promote missing or invalid numbers."""
+    if isinstance(base_lambda, bool) or not isinstance(base_lambda, Real) or not isfinite(base_lambda) or not 0 <= base_lambda <= 1:
+        raise ValueError("base_lambda must be finite and in [0,1]")
     lam = base_lambda
     for result in results:
-        lam *= result.lambda_multiplier
-    return max(0.0, min(1.0, lam))
+        mult = result.lambda_multiplier
+        if isinstance(mult, bool) or not isinstance(mult, Real) or not isfinite(mult) or not 0 <= mult <= 1:
+            raise ValueError(f"{result.name}: lambda multiplier must be finite and in [0,1]")
+        lam *= mult
+    return lam
+
+
+def universal_underdog_offense(
+    *,
+    spread: float,
+    early_down_sustainable: bool | None,
+    qb_ol_viable: bool | None,
+    scoring_path_verified: bool | None,
+    havoc_mismatch: bool | None,
+    ball_security_acceptable: bool | None,
+    discipline_acceptable: bool | None,
+    opponent_adjusted_evidence: bool | None,
+) -> GateResult:
+    """Pregame offensive viability for ALL underdogs, including +1.5.
+
+    None means not verified, not a zero. Critical contradictions veto; other
+    documented weaknesses shrink lambda. This is a diagnostic, not a model
+    probability and never uses postgame information.
+    """
+    if spread <= 0:
+        return GateResult("Universal Underdog Offensive Viability Gate", True)
+    critical = {
+        "QB/OL viability": qb_ol_viable,
+        "sustainable scoring path": scoring_path_verified,
+        "opponent-adjusted offensive evidence": opponent_adjusted_evidence,
+    }
+    reasons = [f"{name} not verified" if value is None else f"{name} failed"
+               for name, value in critical.items() if value is not True]
+    mult = 1.0
+    optional = {
+        "early-down sustainability": early_down_sustainable,
+        "ball security": ball_security_acceptable,
+        "discipline": discipline_acceptable,
+    }
+    for name, value in optional.items():
+        if value is False:
+            reasons.append(f"{name} concern")
+            mult *= 0.85
+        elif value is None:
+            reasons.append(f"{name} unknown")
+            mult *= 0.93
+    if havoc_mismatch is True:
+        reasons.append("severe havoc/turnover mismatch")
+        mult *= 0.65
+    elif havoc_mismatch is None:
+        reasons.append("havoc mismatch not verified")
+        mult *= 0.93
+    return GateResult(
+        "Universal Underdog Offensive Viability Gate",
+        passed=(not any(value is not True for value in critical.values())
+                and havoc_mismatch is not True),
+        lambda_multiplier=mult,
+        stake_cap="B" if mult < 1 else None,
+        reasons=reasons,
+    )

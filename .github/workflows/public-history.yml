@@ -1,0 +1,33 @@
+name: Public historical FBS baseline (2018-2025)
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/v5-decision-engine]
+    paths:
+      - '.github/workflows/public-history.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install public-history dependencies
+        run: python -m pip install -e . pandas pyarrow
+      - name: Download public history and run chronological holdout
+        run: python -m cfb_value_watch.public_history --out data/public_history
+      - name: Upload validated research artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfb-public-history-2018-2025
+          path: |
+            data/public_history/pregame_features_2018_2025.csv
+            data/public_history/validation_report.json
+          retention-days: 30
