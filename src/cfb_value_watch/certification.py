@@ -77,9 +77,14 @@ def certify_bet(e: CertificationEvidence) -> CertificationResult:
             "Matchup, opponent/conference strength, weather or thesis evidence incomplete")
     for name in REQUIRED_GATES:
         require(e.gate_results.get(name) is True, f"Gate not verified/passed: {name}")
-    valid_times = (isinstance(e.quote_timestamp, datetime) and isinstance(e.evaluated_at, datetime)\n                   and e.quote_timestamp.tzinfo is not None and e.evaluated_at.tzinfo is not None\n                   and e.quote_timestamp.utcoffset() is not None and e.evaluated_at.utcoffset() is not None)\n    require(valid_times,
+    valid_times = (isinstance(e.quote_timestamp, datetime) and isinstance(e.evaluated_at, datetime)
+                   and e.quote_timestamp.tzinfo is not None and e.evaluated_at.tzinfo is not None
+                   and e.quote_timestamp.utcoffset() is not None and e.evaluated_at.utcoffset() is not None)
+    require(valid_times,
             "Timezone-aware timestamps required")
-    require(type(e.max_quote_age_seconds) is int and 0 < e.max_quote_age_seconds <= 120,\n            "Invalid quote-freshness limit")\n    if valid_times and type(e.max_quote_age_seconds) is int:
+    require(type(e.max_quote_age_seconds) is int and 0 < e.max_quote_age_seconds <= 120,
+            "Invalid quote-freshness limit")
+    if valid_times and type(e.max_quote_age_seconds) is int:
         age = (e.evaluated_at.astimezone(timezone.utc) -
                e.quote_timestamp.astimezone(timezone.utc)).total_seconds()
         require(0 <= age <= e.max_quote_age_seconds, "Stale or future-dated quote")
