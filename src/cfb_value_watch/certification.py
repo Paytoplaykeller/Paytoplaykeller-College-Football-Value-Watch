@@ -67,30 +67,30 @@ def certify_bet(e: CertificationEvidence) -> CertificationResult:
 
     require(all((e.selection, e.market, e.event_id, e.source_revision, e.model_run_id)),
             "Missing attributable event/model evidence")
-    require(e.executable_quote_verified and bool(e.sportsbook),
+    require(e.executable_quote_verified is True and bool(e.sportsbook),
             "No authenticated executable sportsbook quotation")
-    require(e.independent_forecast_verified, "No independently validated own-model forecast")
-    require(e.no_vig_same_market_verified, "No paired same-market no-vig prior")
-    require(e.availability_verified and e.replacements_verified,
+    require(e.independent_forecast_verified is True, "No independently validated own-model forecast")
+    require(e.no_vig_same_market_verified is True, "No paired same-market no-vig prior")
+    require(e.availability_verified is True and e.replacements_verified is True,
             "Injury, quarterback, specialist or replacement verification incomplete")
-    require(e.thesis_verified and e.opponent_strength_verified and e.venue_weather_verified,
+    require(e.thesis_verified is True and e.opponent_strength_verified is True and e.venue_weather_verified is True,
             "Matchup, opponent/conference strength, weather or thesis evidence incomplete")
     for name in REQUIRED_GATES:
         require(e.gate_results.get(name) is True, f"Gate not verified/passed: {name}")
-    require(e.quote_timestamp.tzinfo is not None and e.evaluated_at.tzinfo is not None,
+    valid_times = (isinstance(e.quote_timestamp, datetime) and isinstance(e.evaluated_at, datetime)\n                   and e.quote_timestamp.tzinfo is not None and e.evaluated_at.tzinfo is not None\n                   and e.quote_timestamp.utcoffset() is not None and e.evaluated_at.utcoffset() is not None)\n    require(valid_times,
             "Timezone-aware timestamps required")
-    if e.quote_timestamp.tzinfo and e.evaluated_at.tzinfo:
+    require(type(e.max_quote_age_seconds) is int and 0 < e.max_quote_age_seconds <= 120,\n            "Invalid quote-freshness limit")\n    if valid_times and type(e.max_quote_age_seconds) is int:
         age = (e.evaluated_at.astimezone(timezone.utc) -
                e.quote_timestamp.astimezone(timezone.utc)).total_seconds()
         require(0 <= age <= e.max_quote_age_seconds, "Stale or future-dated quote")
-    require(e.model_dispersion_points is not None and
+    require(type(e.model_dispersion_points) in (int, float) and
             isfinite(e.model_dispersion_points) and 0 <= e.model_dispersion_points <= 4.5,
             "Missing or excessive model dispersion")
-    valid_probs = all(x is not None and isinstance(x, (int, float)) and
+    valid_probs = all(type(x) in (int, float) and
                       isfinite(x) and 0 <= x <= 1
                       for x in (e.q_market, e.p_raw, e.lam))
     require(valid_probs, "Missing or invalid calibrated probabilities")
-    valid_money = all(x is not None and isinstance(x, (int, float)) and
+    valid_money = all(type(x) in (int, float) and
                       isfinite(x) and x >= 0
                       for x in (e.available_bankroll, e.total_correlated_exposure,
                                 e.proposed_stake))
