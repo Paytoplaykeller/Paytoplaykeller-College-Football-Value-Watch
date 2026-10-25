@@ -49,3 +49,29 @@ def test_stale_quote_blocks_bet():
     a = audit_board([{"game_id": "FLA-TEX"}], [r], now=NOW)
     assert not a.complete
     assert any("stale" in i.reason for i in a.issues)
+
+
+def test_complete_watch_audit_cannot_certify_different_bet():
+    watch = base_review()
+    a = audit_board([{"game_id": "FLA-TEX"}], [watch], now=NOW)
+    assert a.complete
+    bet = dict(watch, decision="BET")
+    assert verified_bets_only(a, [bet]) == []
+
+
+def test_audited_bet_rejects_changed_price_or_gate_evidence():
+    bet = base_review()
+    bet.update({k: True for k in (
+        "price_executable", "two_way_market_verified", "independent_p_raw",
+        "no_vig_prior_verified", "uncertainty_ev_verified",
+        "mandatory_gates_passed", "quarter_kelly_checked",
+        "max_price_checked", "bankroll_cap_checked")})
+    bet.update(decision="BET", quote_time=NOW - timedelta(minutes=3),
+               price=-110)
+    a = audit_board([{"game_id": "FLA-TEX"}], [bet], now=NOW)
+    assert a.complete
+    assert verified_bets_only(a, [bet]) == [bet]
+    changed = dict(bet, price=-125)
+    assert verified_bets_only(a, [changed]) == []
+    changed_gate = dict(bet, mandatory_gates_passed=False)
+    assert verified_bets_only(a, [changed_gate]) == []
