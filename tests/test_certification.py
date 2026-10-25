@@ -76,3 +76,27 @@ def test_missing_any_gate_blocks():
 
 def test_different_market_line_cannot_use_unverified_prior():
     assert certify_bet(replace(valid_evidence(), no_vig_same_market_verified=False)).status == "NO_BET"
+
+def test_truthy_strings_do_not_count_as_verified():
+    assert certify_bet(replace(valid_evidence(),
+                independent_forecast_verified="yes")).status == "NO_BET"
+
+def test_booleans_are_not_valid_probabilities_or_stakes():
+    assert certify_bet(replace(valid_evidence(), p_raw=True)).status == "NO_BET"
+    assert certify_bet(replace(valid_evidence(), proposed_stake=True)).status == "NO_BET"
+
+def test_nan_and_infinite_values_block():
+    assert certify_bet(replace(valid_evidence(), model_dispersion_points=float("nan"))).status == "NO_BET"
+    assert certify_bet(replace(valid_evidence(), available_bankroll=float("inf"))).status == "NO_BET"
+
+def test_quote_age_limit_cannot_be_relaxed_by_input():
+    assert certify_bet(replace(valid_evidence(), max_quote_age_seconds=86400)).status == "NO_BET"
+
+def test_naive_timestamp_fails_closed():
+    assert certify_bet(replace(valid_evidence(), evaluated_at=NOW.replace(tzinfo=None))).status == "NO_BET"
+
+def test_infinite_spread_line_fails_closed():
+    assert certify_bet(replace(valid_evidence(), line=float("inf"))).status == "NO_BET"
+
+def test_non_boolean_large_wager_tier_blocks():
+    assert certify_bet(replace(valid_evidence(), large_wager="false")).status == "NO_BET"
