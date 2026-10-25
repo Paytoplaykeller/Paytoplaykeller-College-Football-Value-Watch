@@ -4,6 +4,7 @@ This module never fetches or fabricates odds, forecasts, injuries or schedules.
 All probability forecasts must be independently produced and attributed.
 """
 from dataclasses import dataclass
+import math
 from datetime import datetime, timezone
 from typing import Mapping
 from .model import (
@@ -46,7 +47,7 @@ def evaluate(record: Mapping, *, now: datetime | None = None) -> Decision:
     errors = []
     def number(key, lo=None, hi=None):
         value = record.get(key)
-        if isinstance(value, bool) or not isinstance(value, (float, int)):
+        if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value):
             errors.append(f"missing/invalid {key}")
             return None
         if (lo is not None and value < lo) or (hi is not None and value > hi):
