@@ -1,11 +1,16 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import math
+
+
+def _validate_odds(odds):
+    if isinstance(odds, bool) or not isinstance(odds, (int, float)) or not math.isfinite(odds) or abs(odds) < 100:
+        raise ValueError("American odds must be finite and at least 100 in magnitude")
 
 
 def american_to_break_even(odds: int) -> float:
-    if odds == 0:
-        raise ValueError("American odds cannot be zero")
-    return odds / (odds + 100) if odds > 0 else (-odds) / ((-odds) + 100)
+    _validate_odds(odds)
+    return 100 / (odds + 100) if odds > 0 else (-odds) / ((-odds) + 100)
 
 
 def no_vig_two_way(odds_a: int, odds_b: int) -> tuple[float, float]:
@@ -22,6 +27,7 @@ def adjusted_probability(q_market: float, p_raw: float, lam: float) -> float:
 
 
 def decimal_odds(american: int) -> float:
+    _validate_odds(american)
     return 1 + (american / 100 if american > 0 else 100 / (-american))
 
 

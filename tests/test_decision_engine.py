@@ -107,3 +107,16 @@ def test_unverified_minors_cannot_be_marked_unmaterial_without_reason():
     r["availability"]["linebackers"] = dict(material=False, checked=False)
     r["minor_uncertainty_lambda_applied"] = True
     assert evaluate(r).status == "PASS"
+
+
+import pytest
+
+@pytest.mark.parametrize("field", ["p_raw","lambda","dispersion_points","available_bankroll","bankroll_stake_cap"])
+@pytest.mark.parametrize("bad", [float('nan'),float('inf'),float('-inf'),True,None])
+def test_nonfinite_numeric_evidence_blocks(field,bad):
+    r=valid_record()
+    r["lambda"]=r.pop("lambda_")
+    r[field]=bad
+    d=evaluate(r)
+    assert d.status == "PASS"
+    assert d.max_stake == 0
