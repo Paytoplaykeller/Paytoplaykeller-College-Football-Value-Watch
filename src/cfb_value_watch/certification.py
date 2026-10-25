@@ -100,6 +100,8 @@ def certify_bet(e: CertificationEvidence) -> CertificationResult:
                       for x in (e.available_bankroll, e.total_correlated_exposure,
                                 e.proposed_stake))
     require(valid_money and e.available_bankroll > 0, "Verified bankroll/exposure/stake missing")
+    require(type(e.large_wager) is bool, "Invalid wager tier")
+    require(type(e.line) in (int, float) and isfinite(e.line), "Invalid spread line")
     if blockers:
         return CertificationResult("NO_BET", tuple(blockers))
     try:
