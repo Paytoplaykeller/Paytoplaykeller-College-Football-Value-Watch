@@ -1,29 +1,52 @@
-name: Hourly FBS read-only market research
+name: Hourly CFB model integrity (research-only)
 on:
   schedule:
-    - cron: '13 * * * *'
+    - cron: '31 * * * *'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  research:
+  integrity:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: feature/evidence-backed-bet-evaluator
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m pip install -e .
-      - name: Query paired public markets, fail closed if not configured
-        env:
-          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-        run: python -m cfb_value_watch.market_scan_cli
+      - run: python -m pip install -e . pytest
+      - name: Run authoritative model regression tests
+        run: python -m pytest -q
+      - name: Publish distinct fail-closed model readiness status
+        run: |
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          report = {
+              "checked_at": datetime.now(timezone.utc).isoformat(),
+              "model_revision": os.environ.get("GITHUB_SHA", "UNKNOWN"),
+              "status": "MODEL_INTEGRITY_ONLY",
+              "decision": "NO_BET",
+              "research_only": True,
+              "public_odds_fetched_by_this_workflow": False,
+              "separate_public_odds_workflow": "Paytoplaykeller/NFL-Value-Watch/.github/workflows/cfb-public-market-report.yml",
+              "independent_live_forecast_verified": False,
+              "authenticated_executable_offer_verified": False,
+              "blockers": [
+                  "Public odds are checked by the existing NFL-Value-Watch CFB workflow, not this repository",
+                  "No independently calibrated current own-model forecast certified by this job",
+                  "No authenticated executable sportsbook quote or verified bankroll in this job",
+              ],
+          }
+          target = Path("research_output/cfb_model_integrity.json")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(report, indent=2))
+          PY
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: hourly-fbs-public-research
-          path: research_output/hourly_public_board.json
+          name: cfb-model-integrity-no-bet
+          path: research_output/cfb_model_integrity.json
+          if-no-files-found: error
           retention-days: 7
