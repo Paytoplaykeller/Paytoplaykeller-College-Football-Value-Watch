@@ -1,5 +1,9 @@
 name: Hourly CFB model integrity (research-only)
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hourly-fbs-research.yml'
   schedule:
     - cron: '31 * * * *'
   workflow_dispatch:
