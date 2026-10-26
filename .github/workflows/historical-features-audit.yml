@@ -1,0 +1,33 @@
+name: Historical pregame features audit
+on:
+  push:
+    branches: [feature/evidence-backed-bet-evaluator]
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e . pyarrow
+      - name: Build strictly pregame snapshots from real archives
+        run: |
+          python - <<'PY'
+          import pyarrow.parquet as pq
+          from cfb_value_watch.public_archive import download_archive
+          from cfb_value_watch.pregame_features import build_pregame_snapshots, OBSERVED_FIELDS, AVAILABILITY_FIELDS
+          s=download_archive('schedules',2024,'/tmp/cfb-sch')
+          p=download_archive('pbp',2024,'/tmp/cfb-pbp')
+          cols=['game_id','pos_team_id','def_pos_team_id','pos_team','def_pos_team','rush','pass','EPA','firstD_by_poss','td_play','sack','int','fumble_vec','yds_rushed','yds_receiving']
+          schedule_cols=['game_id','fbs_game','completed','home_id','away_id','home_team','away_team','home_points','away_points','start_date','neutral_site']
+          sched=pq.read_table(s['path'],columns=schedule_cols).to_pylist()
+          plays=pq.read_table(p['path'],columns=cols).to_pylist()
+          rows=build_pregame_snapshots(sched,plays)
+          viable=[r for r in rows if len(r['features'])==len(OBSERVED_FIELDS)]
+          print('REAL_GAME_FEATURE_AUDIT',{'scheduled':len(sched),'completed_fbs':len(rows),'partial_pregame_features':len(viable),'requires_missing_availability':len(AVAILABILITY_FIELDS),'bet_ready':sum(r['bet_now_eligible'] for r in rows)})
+          assert len(viable)>=100, 'not enough historical as-of EPA snapshots'
+          assert all(not x['bet_now_eligible'] for x in rows)
+          PY

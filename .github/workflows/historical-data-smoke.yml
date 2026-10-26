@@ -1,0 +1,40 @@
+name: Historical data operational smoke test
+on:
+  push:
+    branches: [feature/evidence-backed-bet-evaluator]
+  workflow_dispatch:
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install reader dependencies
+        run: python -m pip install -e . pyarrow
+      - name: Check keyless historical betting archive and schema
+        run: |
+          python - <<'PY'
+          import pyarrow.parquet as pq
+          from pathlib import Path
+          from cfb_value_watch.public_archive import download_archive
+          report=download_archive("betting",2024,"/tmp/cfb-public")
+          table=pq.read_table(report["path"])
+          names=set(table.schema.names)
+          assert table.num_rows > 100, f"insufficient historical games: {table.num_rows}"
+          assert "game_id" in names and "game_spread" in names
+          print(f"PUBLIC_ARCHIVE_OK year=2024 records={table.num_rows} source_hash={report['sha256'][:12]}")
+          print("MODEL_READY=False (pregame EPA/availability features not yet reconstructed)")
+          PY
+      - name: Report secret configuration availability without revealing values
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os
+          print("ODDS_API_CONFIGURED="+str(bool(os.getenv("ODDS_API_KEY"))))
+          print("CFBD_API_CONFIGURED="+str(bool(os.getenv("CFBD_API_KEY"))))
+          PY
