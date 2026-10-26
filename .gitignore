@@ -4,3 +4,7 @@ __pycache__/
 .env
 *.pyc
 *.sqlite3
+
+# Private user-confirmed tickets, bankroll and settlement records must stay private.
+data/ledger/*
+!data/ledger/.gitkeep
