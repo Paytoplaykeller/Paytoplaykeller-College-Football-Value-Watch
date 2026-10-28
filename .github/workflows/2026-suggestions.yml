@@ -1,0 +1,39 @@
+name: 2026 College Football Suggestions (read-only)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '37 * * * *'
+permissions:
+  contents: read
+jobs:
+  suggest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e . pytest
+      - name: Verify LEAN and BET channel tests
+        run: python -m pytest -q tests/test_lean_2026.py tests/test_bet_channel.py tests/test_suggestion_cli.py
+      - name: Generate suggestions only when real evidence exists
+        shell: bash
+        run: |
+          mkdir -p research_output
+          if [ -f research_input/2026_signals.json ]; then
+            python -m cfb_value_watch.suggestion_cli research_input/2026_signals.json --output research_output/2026_suggestions.json
+          else
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          Path("research_output/2026_suggestions.json").write_text(
+            json.dumps({"season":2026,"mode":"RESEARCH_ONLY","decision":"DATA_PENDING",
+              "reason":"No timestamped attributable 2026 signals input supplied",
+              "recommendations":[]},indent=2)+"\\n"
+          )
+          PY
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 2026-cfb-suggestions
+          path: research_output/2026_suggestions.json
