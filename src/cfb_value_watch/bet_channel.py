@@ -77,3 +77,59 @@ def evaluate(e: BetEvidence, *, min_ev=.04, max_quote_age=120) -> BetDecision:
                  f"maximum proposed stake ${e.proposed_stake:.2f}. "
                  "Recheck line, odds, and availability before placement. No wager placed.")
     return BetDecision("BET",(),instruction,p,ev)
+
+@dataclass(frozen=True)
+class ResearchQualification:
+    status: str
+    reasons: tuple[str, ...]
+    p_adj: float | None = None
+    ev: float | None = None
+    instruction: str = ""
+
+
+def qualify_2026_selection(e: BetEvidence, *, min_ev: float = .04,
+                           max_public_quote_age: int = 3600) -> ResearchQualification:
+    """Qualify a selection independently of bankroll or executable offer.
+
+    BET_QUALIFIED_RESEARCH means all forecast, market and injury gates are
+    verified, but is *not* an executable wager. Never emits a stake.
+    Public odds can support research only; final BET still uses evaluate().
+    """
+    problems = []
+    def check(ok, reason):
+        if not ok: problems.append(reason)
+    check(assess_lean(e.lean).status == "LEAN", "2026 qualitative lean not qualified")
+    check(bool(e.book) and e.same_market_verified, "paired public market quote unavailable")
+    check(bool(e.forecast_source) and e.independent_2026_forecast_verified,
+          "verified independent 2026 forecast unavailable")
+    check(bool(e.lambda_rationale), "uncertainty adjustment unsupported")
+    check(e.critical_availability_verified and e.matchup_verified,
+          "critical personnel or matchup unresolved")
+    for gate in GATES:
+        check(e.gates.get(gate) is True, "unverified/failed gate: " + gate)
+    if e.quote_at.tzinfo is None or e.lean.evaluated_at.tzinfo is None:
+        problems.append("timezone-aware quote required")
+    else:
+        age = (e.lean.evaluated_at - e.quote_at).total_seconds()
+        check(0 <= age <= max_public_quote_age, "stale public-market quotation")
+    for val, name, lo, hi in (
+        (e.p_raw,"p_raw",0,1),(e.lam,"lambda",0,1),(e.dispersion,"dispersion",0,4.5)
+    ):
+        check(type(val) in (float,int) and isfinite(val) and lo <= val <= hi,
+              "invalid " + name)
+    if problems:
+        return ResearchQualification("REVIEW", tuple(problems))
+    try:
+        q_market, _ = no_vig_two_way(e.odds, e.opposite_odds)
+        p_adj = adjusted_probability(q_market, e.p_raw, e.lam)
+        ev = expected_value_per_unit(p_adj, e.odds)
+    except (ValueError, ZeroDivisionError):
+        return ResearchQualification("REVIEW", ("invalid market calculations",))
+    if ev < min_ev:
+        return ResearchQualification("PASS", ("adjusted EV below minimum",), p_adj, ev)
+    return ResearchQualification(
+        "BET_QUALIFIED_RESEARCH", (), p_adj, ev,
+        f"Research-qualified: {e.lean.selection}, public reference {e.book} "
+        f"{e.odds:+d}; EV {ev:.2%}. No stake authorized. "
+        "Verify executable price and bankroll manually before betting."
+    )
