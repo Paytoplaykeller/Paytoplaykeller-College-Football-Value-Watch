@@ -21,3 +21,25 @@ def test_exposure_fails():
     assert evaluate(replace(sample(),proposed_stake=500.)).status=="NO BET"
 def test_stale_quote_fails():
     assert evaluate(replace(sample(),quote_at=T-timedelta(hours=2))).status=="NO BET"
+
+from cfb_value_watch.bet_channel import qualify_2026_selection
+
+def test_research_qualified_without_bankroll_or_executable_offer():
+    x=replace(sample(),available_bankroll=None,existing_exposure=None,
+              proposed_stake=None,executable_quote_verified=False,local_access_verified=False)
+    result=qualify_2026_selection(x)
+    assert result.status == "BET_QUALIFIED_RESEARCH"
+    assert "No stake authorized" in result.instruction
+
+def test_research_qualification_rejects_missing_probability():
+    assert qualify_2026_selection(replace(sample(),p_raw=None)).status == "REVIEW"
+
+def test_research_qualification_rejects_failed_gate():
+    assert qualify_2026_selection(replace(sample(),gates={})).status == "REVIEW"
+
+def test_research_qualification_rejects_negative_ev():
+    assert qualify_2026_selection(replace(sample(),p_raw=.45)).status == "PASS"
+
+def test_research_qualification_does_not_change_executable_bet_requirements():
+    x=replace(sample(),available_bankroll=None)
+    assert evaluate(x).status == "NO BET"
