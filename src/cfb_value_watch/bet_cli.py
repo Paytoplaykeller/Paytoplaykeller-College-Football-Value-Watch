@@ -20,6 +20,19 @@ def timestamp(value):
 def decision_from_payload(data):
     """Only explicit verified inputs may permit BET; never invent defaults."""
     try:
+        required_booleans = ("critical_contradiction", "already_placed",
+            "same_market_verified", "executable_quote_verified",
+            "local_access_verified", "independent_2026_forecast_verified",
+            "critical_availability_verified", "matchup_verified")
+        for name in required_booleans:
+            if type(data[name]) is not bool:
+                raise ValueError(name + " must be a JSON boolean")
+        for name in GATES:
+            if type(data["gates"][name]) is not bool:
+                raise ValueError("gate " + name + " must be a JSON boolean")
+        for signal in data["signals"]:
+            if type(signal["favors_selection"]) is not bool:
+                raise ValueError("signal direction must be a JSON boolean")
         signals = tuple(SeasonSignal(
             name=s["name"], favors_selection=s["favors_selection"],
             source=s["source"], observed_at=timestamp(s["observed_at"]),
