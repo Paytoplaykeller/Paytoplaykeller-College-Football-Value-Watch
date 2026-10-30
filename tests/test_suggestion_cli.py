@@ -9,7 +9,9 @@ def test_production_suggestion_contract_never_autobets():
         "public_quote":{"book":"Public","odds":-110,"line":3.5,"as_of":iso(T)}}
     data=suggest({"as_of":iso(T),"candidates":[row]})
     out=data["recommendations"][0]
-    assert out["decision"]=="BET SUGGESTION"
+    assert out["decision"]=="LEAN"
+    assert out["certification_status"]=="NOT_EVALUATED"
+    assert len(out["certification_blockers"])==5
     assert out["model_certified_bet"] is False
     assert out["stake_recommendation"] is None
     assert data["mode"]=="RESEARCH_ONLY"
