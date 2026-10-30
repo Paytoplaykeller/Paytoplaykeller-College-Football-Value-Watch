@@ -31,3 +31,19 @@ def test_unresolved_critical_contradiction_forces_review():
 def test_future_dated_rejected():
     s=SeasonSignal("not yet available",True,"source",NOW+timedelta(days=1))
     assert assess_lean(item((s,))).status=="PASS"
+
+def test_duplicate_evidence_cannot_create_lean():
+    s=SeasonSignal("2026 rushing efficiency",True,"official",NOW)
+    assert assess_lean(item((s,s))).status=="REVIEW"
+
+def test_same_source_different_independent_metrics_allowed():
+    a=SeasonSignal("2026 rushing efficiency",True,"official",NOW)
+    b=SeasonSignal("2026 pass protection",True,"official",NOW)
+    assert assess_lean(item((a,b))).status=="LEAN"
+
+def test_postkickoff_signal_rejected_even_if_before_evaluation():
+    kickoff=NOW+timedelta(hours=1)
+    evaluation=NOW+timedelta(minutes=30)
+    future=SeasonSignal("late score",True,"source",kickoff)
+    x=LeanCandidate("Example +6.5","game",kickoff,evaluation,(future,))
+    assert assess_lean(x).status=="PASS"
