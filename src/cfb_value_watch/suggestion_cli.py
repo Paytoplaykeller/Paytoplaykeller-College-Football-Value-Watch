@@ -40,11 +40,19 @@ def suggest(payload: dict) -> dict:
         raw=evidence[r.selection]
         quote=raw.get("public_quote")
         # Research prices are metadata only. No assumption of executable quotes.
-        results.append({"selection":r.selection, "decision":"BET SUGGESTION" if r.status=="LEAN" else r.status,
+        results.append({"selection":r.selection, "decision":r.status,
                         "model_certified_bet":False, "supportive":r.supportive,
                         "opposing":r.opposing, "reasons":list(r.reasons),
                         "public_quote":quote, "manual_only":True,
-                        "stake_recommendation":None})
+                        "stake_recommendation":None,
+                        "certification_status":"NOT_EVALUATED",
+                        "certification_blockers":[
+                            "No verified independent calibrated 2026 probability forecast",
+                            "No verified no-vig same-market prior and justified lambda",
+                            "No complete injury/matchup and risk-gate verification",
+                            "No authenticated executable locally accessible sportsbook quote",
+                            "No verified available bankroll and quarter-Kelly exposure check"
+                        ]})
     return {"as_of":as_of.isoformat(),"season":2026,"mode":"RESEARCH_ONLY",
             "decision":"NO CERTIFIED BET","recommendations":results}
 
