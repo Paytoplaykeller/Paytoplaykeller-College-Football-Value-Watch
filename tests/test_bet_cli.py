@@ -56,3 +56,8 @@ def test_quote_too_old_fails_closed():
     payload=sample()
     payload["quote_at"]=(T-timedelta(hours=1)).isoformat()
     assert decision_from_payload(payload)["decision"]=="NO BET"
+
+def test_string_false_cannot_pass_verification():
+    payload=sample()
+    payload["executable_quote_verified"]="false"
+    assert decision_from_payload(payload)["decision"]=="NO BET"
