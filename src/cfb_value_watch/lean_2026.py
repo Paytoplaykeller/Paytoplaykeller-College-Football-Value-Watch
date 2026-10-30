@@ -55,6 +55,16 @@ def assess_lean(candidate: LeanCandidate) -> LeanResult:
                 or s.observed_at > candidate.evaluated_at):
             return LeanResult(candidate.selection, "PASS", 0, 0,
                               ("Unattributed, non-2026 or future-dated evidence",))
+    # Duplicate observations must not create a fictitious multi-signal edge.
+    # Treat repeated source/name pairs as one assertion, even across refreshes.
+    keys = [(s.source.strip().casefold(), s.name.strip().casefold())
+            for s in candidate.signals]
+    if len(keys) != len(set(keys)):
+        return LeanResult(candidate.selection, "REVIEW", 0, 0,
+                          ("Duplicate source/signal evidence; deduplicate first",))
+    if any(s.observed_at >= candidate.kickoff for s in candidate.signals):
+        return LeanResult(candidate.selection, "PASS", 0, 0,
+                          ("Post-kickoff evidence cannot support a pregame lean",))
     supportive = sum(s.favors_selection for s in candidate.signals)
     opposing = len(candidate.signals) - supportive
     if candidate.critical_contradiction:
