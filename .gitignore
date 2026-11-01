@@ -4,3 +4,11 @@ __pycache__/
 .env
 *.pyc
 *.sqlite3
+
+# Prevent public disclosure of private wagers and bankroll
+/data/ledger/
+/data/private/
+/private/
+/research_input/
+*betting*tracker*
+*hardrock*ticket*
