@@ -5,7 +5,7 @@ from dataclasses import dataclass
 def american_to_break_even(odds: int) -> float:
     if odds == 0:
         raise ValueError("American odds cannot be zero")
-    return odds / (odds + 100) if odds > 0 else (-odds) / ((-odds) + 100)
+    return 100 / (odds + 100) if odds > 0 else (-odds) / ((-odds) + 100)
 
 
 def no_vig_two_way(odds_a: int, odds_b: int) -> tuple[float, float]:
