@@ -1,0 +1,27 @@
+name: Isolated odds and guardrail repair validation
+on:
+  push:
+    branches:
+      - fix/2026-11-06-odds-input-regression
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e . pytest
+      - name: Full offline recovered research regression
+        run: python -m pytest -q
+      - name: Confirm non-wagering research only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          assert Path("tests/test_restored_guardrails_2026.py").exists()
+          print("Research-only validation; no betting or API credentials used")
+          PY
