@@ -22,6 +22,8 @@ def adjusted_probability(q_market: float, p_raw: float, lam: float) -> float:
 
 
 def decimal_odds(american: int) -> float:
+    if american == 0:
+        raise ValueError("American odds cannot be zero")
     return 1 + (american / 100 if american > 0 else 100 / (-american))
 
 
